@@ -1,0 +1,32 @@
+{
+ "name": "@furkibu/aiko.db",
+  "version": "0.0.1",
+  "description": "A simple, modern, and asynchronous JSON database for Node.js.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+
+  },
+  "keywords": [
+    "database",
+    "json",
+    "db",
+    "discord",
+    "bot"
+  ],
+
+  "author": "FurkiBu",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.9.1",
+    "typescript": "^5.9.3"
+  },
+
+  "files": [
+  "dist",
+  "LICENSE",
+  "README.md"
+]
+}

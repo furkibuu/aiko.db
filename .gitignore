@@ -1,0 +1,16 @@
+
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+
+dist
+
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+
+.DS_Store
+Thumbs.db
