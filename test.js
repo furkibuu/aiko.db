@@ -10,7 +10,6 @@ async function runAdvancedTests() {
   console.log('--- Aiko.db Gelişmiş Test Paketi Başlatıldı ---');
   
   try {
-    // Teste başlamadan önce her zaman temizle
     await db.clear();
 
     logTest('Temel SET ve GET işlemi');
@@ -49,8 +48,7 @@ async function runAdvancedTests() {
     await db.push('user.inventory', 'Sedef'); 
     await db.push('user.inventory', 'Furkan', 'Aiko'); 
     const inventory = await db.get('user.inventory');
-    // ----> DÜZELTME BURADA <----
-    // Kontrolü, eklediğimiz doğru verilere göre güncelliyoruz.
+
     if (inventory.length !== 3 || inventory[1] !== 'Furkan') throw new Error('PUSH işlemi başarısız!');
     console.log('✅ Başarılı: Envanter ->', inventory);
     
@@ -74,5 +72,5 @@ async function runAdvancedTests() {
   }
 }
 
-// Testleri çalıştır
+
 runAdvancedTests();
