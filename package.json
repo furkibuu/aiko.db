@@ -1,13 +1,16 @@
 {
- "name": "@furkibu/aiko.db",
-  "version": "0.0.2",
+"name": "@furkibuu/aiko.db", 
+  "version": "0.0.3",
   "description": "A simple, modern, and asynchronous JSON database for Node.js.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "scripts": {
+"scripts": {
     "build": "tsc",
+    "test": "node test.js",
     "start": "node dist/index.js"
-
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   },
   "keywords": [
     "database",
