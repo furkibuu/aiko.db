@@ -1,4 +1,4 @@
-# @furkibu/@furkibu/aiko.db
+# @furkibu/aiko.db
 
 ![NPM Version](https://img.shields.io/npm/v/@furkibu/aiko.db?style=for-the-badge&logo=npm)
 ![Downloads](https://img.shields.io/npm/dm/@furkibu/aiko.db?style=for-the-badge)
