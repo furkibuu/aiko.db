@@ -1,8 +1,8 @@
 # @furkibuu/aiko.db
 
-![NPM Version](https://img.shields.io/npm/v/@furkibuu/aiko.db?style=for-the-badge&logo=npm)
-![Downloads](https://img.shields.io/npm/dm/@furkibuu/aiko.db?style=for-the-badge)
-![License](https://img.shields.io/npm/l/@furkibuu/aiko.db?style=for-the-badge)
+![NPM Version](https://img.shields.io/npm/v/@furkibu/aiko.db?style=for-the-badge&logo=npm)
+![Downloads](https://img.shields.io/npm/dm/@furkibu/aiko.db?style=for-the-badge)
+![License](https://img.shields.io/npm/l/@furkibu/aiko.db?style=for-the-badge)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 
 Node.js için geliştirilmiş, modern, hızlı ve sıfır bağımlılığa sahip, asenkron bir JSON veritabanı. `aikodb`'nin manevi devamı olarak, daha güçlü ve esnek özelliklerle donatılmıştır.
@@ -22,14 +22,14 @@ Node.js için geliştirilmiş, modern, hızlı ve sıfır bağımlılığa sahip
 ## 💾 Kurulum
 
 ```bash
-npm install @furkibuu/aiko.db
+npm install @furkibu/aiko.db
 ```
 
 ## ⚡ Hızlı Başlangıç
 
 ```javascript
-// const { AikoDB } = require('@furkibuu/aiko.db'); // JavaScript
-import { AikoDB } from '@furkibuu/aiko.db'; // TypeScript
+// const { AikoDB } = require('@furkibu/aiko.db'); // JavaScript
+import { AikoDB } from '@furkibu/aiko.db'; // TypeScript
 
 const db = new AikoDB('database.json');
 
