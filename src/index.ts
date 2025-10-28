@@ -7,8 +7,8 @@ export class AikoDB {
   private cache: Record<string, any> | null = null; 
 
   /**
-   * 
-   * @param filePath 
+   *
+   * @param filePath Varsayılan: 'aikodb.json'
    */
   constructor(filePath: string = 'aikodb.json') {
     this.dbPath = resolve(process.cwd(), filePath);
@@ -16,38 +16,28 @@ export class AikoDB {
 
 
 
-  /**
-   * 
-   * 
-   * @private
-   */
   private async _read(): Promise<Record<string, any>> {
     if (this.cache !== null) {
       return this.cache;
     }
-
     try {
       const data = await fs.readFile(this.dbPath, 'utf-8');
       this.cache = JSON.parse(data);
       return this.cache!;
     } catch (error: any) {
       if (error.code === 'ENOENT') {
-        this.cache = {}; 
+        this.cache = {};
         return this.cache;
       }
       throw error;
     }
   }
 
-  /**
-   *
-   * @private
-   */
   private async _write(): Promise<void> {
     if (this.cache === null) return;
     await fs.writeFile(this.dbPath, JSON.stringify(this.cache, null, 2));
   }
-
+  
   private _getNested(data: any, keys: string[]): any {
       let current = data;
       for (const key of keys) {
@@ -76,7 +66,7 @@ export class AikoDB {
     for (let i = 0; i < keys.length - 1; i++) {
       const key = keys[i];
       if (typeof current[key] !== 'object' || current[key] === null) {
-        return false; 
+        return false;
       }
       current = current[key];
     }
@@ -109,7 +99,6 @@ export class AikoDB {
     return data[key] as T | undefined;
   }
 
-  
   public async has(key: string): Promise<boolean> {
     const value = await this.get(key);
     return value !== undefined;
@@ -124,14 +113,12 @@ export class AikoDB {
       delete data[key];
       success = true;
     }
-    
     if (success) {
       await this._write();
     }
     return success;
   }
   
-
   public async clear(): Promise<void> {
     this.cache = {};
     await this._write();
@@ -148,7 +135,7 @@ export class AikoDB {
     await this.set(key, currentArray);
     return currentArray;
   }
-
+  
   public async add(key: string, amount: number): Promise<number> {
     const currentValue = (await this.get<number>(key)) || 0;
     if (typeof currentValue !== 'number') {
@@ -158,9 +145,80 @@ export class AikoDB {
     await this.set(key, newValue);
     return newValue;
   }
-
+  
   public async subtract(key: string, amount: number): Promise<number> {
-    return this.add(key, -amount); 
+    return this.add(key, -amount);
+  }
+
+
+
+  /**
+  
+   * @param key 
+   * @param callback 
+   * @example db.pull('users', (user) => user.id === '123')
+   */
+  public async pull<T>(key: string, callback: (element: T) => boolean): Promise<T[]> {
+    const currentArray = (await this.get<T[]>(key)) || [];
+    if (!Array.isArray(currentArray)) {
+      throw new Error(`The value at key "${key}" is not an array.`);
+    }
+    const newArray = currentArray.filter(element => !callback(element));
+    await this.set(key, newArray);
+    return newArray;
+  }
+
+  /**
+   *
+   * @example const allData = await db.all();
+   */
+  public async all(): Promise<Record<string, any>> {
+    return this._read();
+  }
+
+  /**
+   * .
+   * @param callback 
+   * @example const specialUser = await db.find((user) => user.role === 'admin');
+   */
+/**
+   
+   * @param callback
+   * @example const specialUser = await db.find((user) => user.role === 'admin');
+   */
+  public async find<T>(callback: (element: any) => boolean): Promise<T | undefined> {
+    const data = await this._read();
+    
+    for (const key in data) {
+      const value = data[key];
+      
+      
+      if (Array.isArray(value)) {
+        const foundInArray = value.find(element => callback(element));
+        if (foundInArray) {
+          return foundInArray as T;
+        }
+      } 
+
+      else if (callback(value)) {
+        return value as T;
+      }
+    }
+    
+    return undefined;
+  }
+
+  /**
+  
+   * @param backupPath Y
+   * @example await db.backup('database-backup.json');
+   */
+  public async backup(backupPath: string): Promise<void> {
+    try {
+      const destination = resolve(process.cwd(), backupPath);
+      await fs.copyFile(this.dbPath, destination);
+    } catch (error) {
+      throw new Error(`Backup failed: ${error}`);
+    }
   }
 }
-

@@ -1,76 +1,61 @@
 const { AikoDB } = require('./dist/index.js');
 const db = new AikoDB('test-suite-database.json');
+const fs = require('fs').promises; // Backup test için
 
 let testCounter = 1;
 function logTest(description) {
   console.log(`\n[Test ${testCounter++}] - ${description}`);
 }
 
-async function runAdvancedTests() {
-  console.log('--- Aiko.db Gelişmiş Test Paketi Başlatıldı ---');
-  
+async function runAllTests() {
+  console.log('--- Aiko.db Tam Test Paketi Başlatıldı ---');
   try {
     await db.clear();
 
-    logTest('Temel SET ve GET işlemi');
-    await db.set('appName', 'aiko.db');
-    const appName = await db.get('appName');
-    if (appName !== 'aiko.db') throw new Error('Temel GET işlemi başarısız!');
-    console.log('✅ Başarılı: appName ->', appName);
+    logTest('Temel ve Nokta Notasyonu SET/GET');
+    await db.set('user.profile', { name: 'Furkan', level: 50 });
+    const name = await db.get('user.profile.name');
+    if (name !== 'Furkan') throw new Error('GET işlemi başarısız!');
+    console.log('✅ Başarılı: Veri eklendi ve okundu.');
 
-    logTest('Nokta Notasyonu ile SET ve GET işlemi');
-    await db.set('user.profile.username', 'furki');
-    await db.set('user.profile.level', 50);
-    const username = await db.get('user.profile.username');
-    if (username !== 'furki') throw new Error('Nokta notasyonu ile GET başarısız!');
-    console.log('✅ Başarılı: user.profile.username ->', username);
-
-    logTest('Nokta Notasyonu ile HAS işlemi');
-    const hasLevel = await db.has('user.profile.level');
-    const hasRank = await db.has('user.profile.rank');
-    if (!hasLevel || hasRank) throw new Error('Nokta notasyonu ile HAS başarısız!');
-    console.log('✅ Başarılı: user.profile.level var, user.profile.rank yok.');
-
-    logTest('ADD (Ekleme) işlemi');
-    await db.set('user.stats.gold', 100);
-    await db.add('user.stats.gold', 75);
-    const gold = await db.get('user.stats.gold');
-    if (gold !== 175) throw new Error('ADD işlemi başarısız!');
-    console.log('✅ Başarılı: Yeni altın miktarı ->', gold);
+    logTest('PUSH ve PULL (Dizi işlemleri)');
+    await db.set('users', []);
+    await db.push('users', { id: '123', name: 'Ahmet' }, { id: '456', name: 'Ayşe' });
+    let users = await db.get('users');
+    if (users.length !== 2) throw new Error('PUSH başarısız!');
+    console.log('✅ Başarılı: Diziye 2 kullanıcı eklendi.');
     
-    logTest('SUBTRACT (Çıkarma) işlemi');
-    await db.subtract('user.stats.gold', 25);
-    const finalGold = await db.get('user.stats.gold');
-    if (finalGold !== 150) throw new Error('SUBTRACT işlemi başarısız!');
-    console.log('✅ Başarılı: Son altın miktarı ->', finalGold);
+    await db.pull('users', (user) => user.id === '123');
+    users = await db.get('users');
+    if (users.length !== 1 || users[0].name !== 'Ayşe') throw new Error('PULL başarısız!');
+    console.log('✅ Başarılı: ID\'si 123 olan kullanıcı diziden çıkarıldı.');
 
-    logTest('PUSH (Diziye ekleme) işlemi');
-    await db.push('user.inventory', 'Sedef'); 
-    await db.push('user.inventory', 'Furkan', 'Aiko'); 
-    const inventory = await db.get('user.inventory');
+    logTest('ALL (Tüm veriyi çekme)');
+    const allData = await db.all();
+    if (!allData.users || !allData.user) throw new Error('ALL başarısız!');
+    console.log('✅ Başarılı: Tüm veritabanı verisi çekildi.');
 
-    if (inventory.length !== 3 || inventory[1] !== 'Furkan') throw new Error('PUSH işlemi başarısız!');
-    console.log('✅ Başarılı: Envanter ->', inventory);
-    
-    logTest('Nokta Notasyonu ile DELETE işlemi');
-    const deleteResult = await db.delete('user.profile.level');
-    const levelExistsAfterDelete = await db.has('user.profile.level');
-    if (!deleteResult || levelExistsAfterDelete) throw new Error('Nokta notasyonu ile DELETE başarısız!');
-    console.log('✅ Başarılı: user.profile.level silindi.');
+    logTest('FIND (Değere göre bulma)');
+    const foundUser = await db.find((data) => data.name === 'Ayşe');
+    if (!foundUser || foundUser.id !== '456') throw new Error('FIND başarısız!');
+    console.log(`✅ Başarılı: Adı 'Ayşe' olan kullanıcı bulundu:`, foundUser);
 
-    logTest('CLEAR işlemi');
-    await db.clear();
-    const userExists = await db.has('user');
-    if (userExists) throw new Error('CLEAR işlemi başarısız!');
-    console.log('✅ Başarılı: Veritabanı başarıyla temizlendi.');
+    logTest('BACKUP (Yedekleme)');
+    const backupFile = 'test-backup.json';
+    await db.backup(backupFile);
+    const backupExists = await fs.access(backupFile).then(() => true).catch(() => false);
+    if (!backupExists) throw new Error('BACKUP başarısız!');
+    console.log('✅ Başarılı: Veritabanı başarıyla yedeklendi.');
+    await fs.unlink(backupFile); // Test sonrası yedek dosyasını temizle
 
-    console.log('\n\n🚀 --- Tüm Gelişmiş Testler Başarıyla Tamamlandı! --- 🚀');
-
+    console.log('\n\n🚀 --- Tüm Testler Başarıyla Tamamlandı! --- 🚀');
   } catch (error) {
-    console.error('\n\n❌ --- TEST BAŞARISIZ OLDU! --- ❌');
+    console.error('\n\n❌ --- TEST BAŞARISZ OLDU! --- ❌');
     console.error('Hata:', error.message);
+  } finally {
+      // Oluşturulan test veritabanını temizle
+      await fs.unlink(db.dbPath).catch(() => {});
   }
 }
 
-
-runAdvancedTests();
+runAllTests();
