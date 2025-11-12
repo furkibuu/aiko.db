@@ -1,20 +1,19 @@
+// Gerekli modülleri import et
 import { promises as fs } from 'fs';
 import { resolve } from 'path';
+import { EventEmitter } from 'events'; // 1. YENİ: Event Emitter import edildi
 
-
-export class AikoDB {
+// 2. YENİ: Sınıfımız artık bir EventEmitter
+export class AikoDB extends EventEmitter {
   private readonly dbPath: string;
-  private cache: Record<string, any> | null = null; 
+  private cache: Record<string, any> | null = null;
 
-  /**
-   *
-   * @param filePath Varsayılan: 'aikodb.json'
-   */
   constructor(filePath: string = 'aikodb.json') {
+    super(); // 3. YENİ: EventEmitter'ın constructor'ını çağır
     this.dbPath = resolve(process.cwd(), filePath);
   }
 
-
+  // --- Özel (Private) Yardımcı Metotlar ---
 
   private async _read(): Promise<Record<string, any>> {
     if (this.cache !== null) {
@@ -39,14 +38,14 @@ export class AikoDB {
   }
   
   private _getNested(data: any, keys: string[]): any {
-      let current = data;
-      for (const key of keys) {
-          if (typeof current !== 'object' || current === null || !(key in current)) {
-              return undefined;
-          }
-          current = current[key];
-      }
-      return current;
+    let current = data;
+    for (const key of keys) {
+        if (typeof current !== 'object' || current === null || !(key in current)) {
+            return undefined;
+        }
+        current = current[key];
+    }
+    return current;
   }
   
   private _setNested(data: any, keys: string[], value: any): void {
@@ -78,7 +77,7 @@ export class AikoDB {
     return false;
   }
 
-
+  // --- Genel Veritabanı Metotları ---
 
   public async set<T>(key: string, value: T): Promise<T> {
     const data = await this._read();
@@ -88,6 +87,7 @@ export class AikoDB {
       data[key] = value;
     }
     await this._write();
+    this.emit('set', key, value); // 4. YENİ: Olay tetikle
     return value;
   }
 
@@ -115,6 +115,7 @@ export class AikoDB {
     }
     if (success) {
       await this._write();
+      this.emit('delete', key); // 4. YENİ: Olay tetikle
     }
     return success;
   }
@@ -122,18 +123,27 @@ export class AikoDB {
   public async clear(): Promise<void> {
     this.cache = {};
     await this._write();
+    this.emit('clear'); // 4. YENİ: Olay tetikle
   }
   
-
-
   public async push<T>(key: string, ...values: T[]): Promise<T[]> {
     const currentArray = (await this.get<T[]>(key)) || [];
     if (!Array.isArray(currentArray)) {
         throw new Error(`The value at key "${key}" is not an array.`);
     }
     currentArray.push(...values);
-    await this.set(key, currentArray);
+    await this.set(key, currentArray); // Bu metot zaten "set" olayını tetikler
     return currentArray;
+  }
+  
+  public async pull<T>(key: string, callback: (element: T) => boolean): Promise<T[]> {
+    const currentArray = (await this.get<T[]>(key)) || [];
+    if (!Array.isArray(currentArray)) {
+      throw new Error(`The value at key "${key}" is not an array.`);
+    }
+    const newArray = currentArray.filter(element => !callback(element));
+    await this.set(key, newArray); // Bu metot zaten "set" olayını tetikler
+    return newArray;
   }
   
   public async add(key: string, amount: number): Promise<number> {
@@ -142,77 +152,35 @@ export class AikoDB {
         throw new Error(`The value at key "${key}" is not a number.`);
     }
     const newValue = currentValue + amount;
-    await this.set(key, newValue);
+    await this.set(key, newValue); // Bu metot zaten "set" olayını tetikler
     return newValue;
   }
   
   public async subtract(key: string, amount: number): Promise<number> {
-    return this.add(key, -amount);
+    return this.add(key, -amount); // "add" metodunu çağırdığı için "set" olayını tetikler
   }
 
-
-
-  /**
-  
-   * @param key 
-   * @param callback 
-   * @example db.pull('users', (user) => user.id === '123')
-   */
-  public async pull<T>(key: string, callback: (element: T) => boolean): Promise<T[]> {
-    const currentArray = (await this.get<T[]>(key)) || [];
-    if (!Array.isArray(currentArray)) {
-      throw new Error(`The value at key "${key}" is not an array.`);
-    }
-    const newArray = currentArray.filter(element => !callback(element));
-    await this.set(key, newArray);
-    return newArray;
-  }
-
-  /**
-   *
-   * @example const allData = await db.all();
-   */
   public async all(): Promise<Record<string, any>> {
     return this._read();
   }
 
-  /**
-   * .
-   * @param callback 
-   * @example const specialUser = await db.find((user) => user.role === 'admin');
-   */
-/**
-   
-   * @param callback
-   * @example const specialUser = await db.find((user) => user.role === 'admin');
-   */
   public async find<T>(callback: (element: any) => boolean): Promise<T | undefined> {
     const data = await this._read();
-    
     for (const key in data) {
       const value = data[key];
-      
-      
       if (Array.isArray(value)) {
         const foundInArray = value.find(element => callback(element));
         if (foundInArray) {
           return foundInArray as T;
         }
       } 
-
       else if (callback(value)) {
         return value as T;
       }
     }
-    
     return undefined;
   }
 
-  /**
-  
-   * @param backupPath Y
-   * @example await db.backup('database-backup.json');
-   */
   public async backup(backupPath: string): Promise<void> {
     try {
       const destination = resolve(process.cwd(), backupPath);
@@ -220,5 +188,34 @@ export class AikoDB {
     } catch (error) {
       throw new Error(`Backup failed: ${error}`);
     }
+  }
+
+  public async size(): Promise<number> {
+    const data = await this._read();
+    return Object.keys(data).length;
+  }
+
+  public async ensure<T>(key: string, defaultValue: T): Promise<T> {
+    const existingValue = await this.get<T>(key);
+    if (existingValue === undefined) {
+      return this.set(key, defaultValue); // "set" metodunu çağırdığı için "set" olayını tetikler
+    }
+    return existingValue;
+  }
+
+  public async filter<T>(callback: (element: any) => boolean): Promise<T[]> {
+    const data = await this._read();
+    const results: T[] = [];
+    for (const key in data) {
+      const value = data[key];
+      if (Array.isArray(value)) {
+        const filteredArray = value.filter(element => callback(element));
+        results.push(...filteredArray);
+      } 
+      else if (callback(value)) {
+        results.push(value);
+      }
+    }
+    return results;
   }
 }
