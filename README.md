@@ -30,6 +30,7 @@ npm install @furkibu/aiko.db
 ## ⚡ Hızlı Başlangıç
 
 ```javascript
+//const {AikoDB} = require("@furkibu/aiko.db")
 import { AikoDB } from '@furkibu/aiko.db';
 
 const db = new AikoDB('server-data.json');
@@ -116,6 +117,111 @@ main();
 db.once('set', (key, value) => {
   console.log('İlk veri başarıyla ayarlandı!');
 });
+```
+
+### Discord Botunda 
+
+```javascript
+
+const { Client, GatewayIntentBits } = require('discord.js');
+const { AikoDB } = require('@furkibu/aiko.db'); 
+
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent
+    ]
+});
+
+
+const db = new AikoDB('aikodb.json');
+
+
+// Veritabanında bir veri değiştiğinde veya eklendiğinde bu olay tetiklenir
+db.on('set', (key, newValue) => {
+    console.log(`[VERİTABANI] Değişiklik algılandı: ${key} -> ${JSON.stringify(newValue)}`);
+    
+    // Eğer değişen anahtar 'prefix' ise, botun durumunu güncelle
+    // Botun o an online olduğundan emin olmak için (client.user null olmasın diye) kontrol ekleyelim
+    if (key === 'prefix' && client.user) {
+        const newStatus = `Yeni prefix: ${newValue}`;
+        client.user.setActivity(newStatus);
+        console.log(`[BOT] Bot durumu güncellendi: ${newStatus}`);
+    }
+});
+
+// Veritabanı temizlendiğinde
+db.on('clear', () => {
+    console.log('[VERİTABANI] Tüm veritabanı temizlendi!');
+    if (client.user) {
+        client.user.setActivity('Ayarlar sıfırlandı!');
+    }
+});
+
+
+client.on('ready', async () => {
+    console.log(`${client.user.tag} adıyla giriş yapıldı!`);
+    
+    // Bot başladığında, veritabanından prefix'i kontrol et
+    // Eğer 'prefix' ayarlanmamışsa, varsayılan olarak '!' ata
+    const prefix = await db.ensure('prefix', '!');
+    
+    // Botun durumunu ayarla
+    client.user.setActivity(`Prefix: ${prefix}`);
+    console.log(`[BOT] Aktif prefix: ${prefix}`);
+});
+
+// 4. Komutları Yönetme (MessageCreate) Olayı
+client.on('messageCreate', async message => {
+    if (message.author.bot) return;
+
+    // Mevcut prefix'i veritabanından al
+    const prefix = await db.get('prefix'); // ensure sayesinde artık '!' olduğundan eminiz
+
+    // Mesaj prefix ile başlamıyorsa ignore'la
+    if (!message.content.startsWith(prefix)) return;
+
+    const args = message.content.slice(prefix.length).trim().split(/ +/);
+    const command = args.shift().toLowerCase();
+
+    // --- Prefix Ayarlama Komutu ---
+    if (command === 'setprefix') {
+        const newPrefix = args[0];
+        if (!newPrefix) {
+            return message.channel.send('Lütfen yeni bir prefix girin. (Örn: `!setprefix ?`)');
+        }
+        
+        // Veritabanını güncelle
+        // BU SATIR, YUKARIDAKİ db.on('set', ...) OLAYINI TETİKLEYECEK!
+        await db.set('prefix', newPrefix); 
+        
+        message.channel.send(`Prefix başarıyla \`${newPrefix}\` olarak ayarlandı!`);
+    }
+
+    // --- Diğer Komutlar ---
+    if (command === 'ping') {
+        message.channel.send('Pong!');
+    }
+    
+    if (command === 'profil') {
+        // Kullanıcının parasını (yoksa 0 ata) getir
+        const balance = await db.ensure(`users.${message.author.id}.balance`, 0);
+        message.channel.send(`${message.author.username}, şu an ${balance} altının var.`);
+    }
+
+    if (command === 'calis') {
+        // Kullanıcının parasına rastgele 10-50 arası altın ekle
+        const kazanc = Math.floor(Math.random() * 41) + 10;
+        const newBalance = await db.add(`users.${message.author.id}.balance`, kazanc);
+        message.channel.send(`Çalıştın ve ${kazanc} altın kazandın! Yeni bakiyen: ${newBalance} altın.`);
+    }
+});
+
+
+// Botu Discord'a bağla
+client.login('Token');
+
 ```
 
 ## 🤝 Katkıda Bulunma
